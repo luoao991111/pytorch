@@ -52,6 +52,7 @@ const char* kCudnnDoubleBackwardMsg =
     "Double backwards is not supported for CuDNN RNNs due to limitations in the CuDNN API. To run double backwards, please disable the CuDNN backend temporarily while running the forward pass of your RNN. For example: \nwith torch.backends.cudnn.flags(enabled=False):\n    output = model(inputs)";
 
 Tensor apply_loss_reduction(const Tensor& unreduced, int64_t reduction) {
+
   if (reduction == at::Reduction::Mean) {
     return unreduced.mean();
   } else if (reduction == at::Reduction::Sum) {
@@ -702,6 +703,7 @@ Tensor sum_backward(
     c10::SymIntArrayRef sizes,
     OptionalIntArrayRef opt_dims,
     bool keepdim) {
+  printf("sum_backward() called, option 1");
   if (!keepdim && !sizes.empty()) {
     if (opt_dims.has_value() && !opt_dims.value().empty()) {
       return unsqueeze_multiple(grad, opt_dims, sizes.size())
@@ -716,6 +718,7 @@ Tensor sum_backward(
     c10::SymIntArrayRef sizes,
     c10::IntArrayRef dims,
     bool keepdim) {
+  printf("sum_backward() called, option 2");
   if (!keepdim && !sizes.empty() && !dims.empty()) {
     // we are only using `keepdim=true` path for SymInts for now
     TORCH_CHECK_NOT_IMPLEMENTED(

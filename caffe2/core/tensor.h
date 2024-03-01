@@ -235,7 +235,7 @@ class TORCH_API Tensor final {
   }
 
   template <typename... Ts>
-  void Resize(Ts... dim_source) const {
+  void Resize(Ts... dim_source) const {  
     impl_.get()->Resize(dim_source...);
   }
 

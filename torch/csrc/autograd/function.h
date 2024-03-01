@@ -111,6 +111,8 @@ struct TORCH_API Node : std::enable_shared_from_this<Node> {
   /// Construct a new `Node` with the given `next_edges`
   explicit Node(uint64_t sequence_nr, edge_list&& next_edges = edge_list())
       : sequence_nr_(sequence_nr), next_edges_(std::move(next_edges)) {
+
+    printf("Node constructed with seq_nr=%lu\n", sequence_nr);
     for (const Edge& edge : next_edges_) {
       update_topological_nr(edge);
     }

@@ -1,5 +1,5 @@
 #include <torch/csrc/autograd/engine.h>
-
+#include <chrono>
 #include <torch/csrc/autograd/anomaly_mode.h>
 #include <torch/csrc/autograd/autograd.h>
 #include <torch/csrc/autograd/function.h>
@@ -912,15 +912,83 @@ void validate_outputs(
   }
 }
 
+inline static void dump_io_dims(variable_list &io_buffer) {
+  for (Variable &var: io_buffer) {
+    c10::ArrayRef sizes = var.sizes();
+    printf("[");
+    for (auto &j: sizes)
+      printf("%ld, ", j);
+    printf("] ");
+  }
+}
+
+inline static void print_tensor(Variable &x) {
+  const long unsigned int dims = x.dim();
+  if (!x.defined()) 
+    return;
+
+  auto tensor_data = x.variable_data();
+  if (!dims)
+    printf("[%10f]", *tensor_data.data_ptr<float>());
+
+  if (dims == 1) {
+    auto accessor = tensor_data.accessor<float, 1>();
+    printf("[");
+    for (int i = 0; i < accessor.size(0); i++)
+      printf("%10f", accessor[i]);
+    printf("]");
+  }
+
+  if (dims == 2) {
+    auto accessor = tensor_data.accessor<float, 2>();
+    printf("[");
+    for (int i = 0; i < accessor.size(0); i++) {
+      if (i == 3) {
+        printf(".................................\n");
+        continue;
+      }
+      if (i > 3 && i < accessor.size(0) - 3) continue;
+      if (i == 0) printf("["); else printf(" [");
+      for (int j = 0; j < accessor.size(1); j++) {
+        if (j == 3) printf(" ... ");
+        if (j >= 3 && j < accessor.size(1) - 3) continue;
+        printf("%10f", accessor[i][j]);
+      }
+        
+      if (i == accessor.size(0) - 1) printf("]"); else printf("]\n");
+
+    }
+    printf("]\n");
+  }
+}
+inline static void dump_tensor(variable_list &io_buffer) {
+  for (Variable &var: io_buffer) {
+    print_tensor(var);
+  }
+}
+
 static variable_list call_function(
     std::shared_ptr<GraphTask>& graph_task,
     Node* func,
     InputBuffer& inputBuffer) {
+
   CheckpointValidGuard cpvguard(graph_task);
   auto& fn = *func;
   auto inputs =
       call_tensor_pre_hooks(fn, InputBuffer::variables(std::move(inputBuffer)));
   inputs = call_pre_hooks(fn, std::move(inputs));
+
+  // wenzello
+
+  std::cout << "BP function called: " << fn.name() << "\t" << &fn << std::endl;
+  auto now = std::chrono::system_clock::now();
+  auto timestamp = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+  std::cout << timestamp << std::endl;
+  // dump_io_dims(inputs);
+  // dump_tensor(inputs);
+  // printf("---------------------->");
+
+
   if (!graph_task->keep_graph_) {
     fn.will_release_variables();
   }
@@ -949,7 +1017,7 @@ static variable_list call_function(
   } else {
     outputs = fn(std::move(inputs));
   }
-
+  // dump_io_dims(outputs);
   validate_outputs(fn.next_edges(), outputs, [&](const std::string& msg) {
     std::ostringstream ss;
     ss << "Function " << fn.name() << " returned an " << msg;
@@ -960,6 +1028,7 @@ static variable_list call_function(
     // NOLINTNEXTLINE(bugprone-use-after-move)
     return call_post_hooks(fn, std::move(outputs), inputs);
   }
+  // dump_tensor(outputs);
   return outputs;
 }
 

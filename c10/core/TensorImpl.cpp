@@ -457,6 +457,7 @@ void TensorImpl::set_requires_grad(bool requires_grad) {
   TORCH_CHECK(
       !(requires_grad && is_inference() && !c10::InferenceMode::is_enabled()),
       "Setting requires_grad=True on inference tensor outside InferenceMode is not allowed.");
+
   if (!requires_grad && !autograd_meta_)
     return;
   if (!autograd_meta_)
@@ -483,6 +484,9 @@ void TensorImpl::set_autograd_meta(
     std::unique_ptr<c10::AutogradMetaInterface> autograd_meta) {
   // NB: autograd_meta may be null!  That just means it's the default
   // constructor
+  // for (auto &i: impl_.sizes())
+  //   printf("%d ", i);
+  //   printf("\n");
   autograd_meta_ = std::move(autograd_meta);
 }
 
